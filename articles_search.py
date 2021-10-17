@@ -10,6 +10,7 @@ from email.message import EmailMessage
 import smtplib
 from urllib.request import urlretrieve
 import uuid
+import wget
 from conf import query, num_page, receiver
 
 query_link = f"https://www.semanticscholar.org/search?q={query}&sort=relevance&pdf=true&page="
@@ -25,7 +26,8 @@ login, password = get_credentials("hse")   # could be setup manually
 
 # webdriver
 chrome_options = Options()
-prefs = {"download.default_directory": folder_for_pdf, "download.prompt_for_download": False}
+prefs = {"plugins.always_open_pdf_externally": True, "plugins.plugins_list": [{"enabled": False, "name": "Chrome PDF Viewer"}], "download.default_directory": folder_for_pdf, "download.prompt_for_download": False}
+
 chrome_options.add_experimental_option('prefs', prefs)
 os.environ["webdriver.chrome.driver"] = webdriver_path   # 'webdriver' executable needs to be in PATH. Please see https://sites.google.com/a/chromium.org/chromedriver/home
 
@@ -91,26 +93,29 @@ for search_link in links_list:
         # trying to download the article's doc
         try:
             initial_dir = os.listdir(folder_for_pdf)
-            container = driver.find_element_by_class_name("flex-paper-actions__item-container")
-            filePath = container.find_element_by_xpath("//a[@data-heap-direct-pdf-link='true']").get_attribute("href")
-            filename = str(uuid.uuid4()) + "_" + filePath.split("/")[-1]
-
-
+            #container = driver.find_element_by_class_name("flex-paper-actions__item-container")
+            driver.find_element_by_xpath("//a[@data-heap-direct-pdf-link='true']").click()
+            time.sleep(5)
+            #filePath = _filePath.get_attribute("href")
+            #filename = str(uuid.uuid4()) + ".pdf"
             current_dir = os.listdir(folder_for_pdf)
+
+            filename = list(set(current_dir) - set(initial_dir))[0]
+
             full_path = os.path.join(folder_for_pdf, filename)
-            urlretrieve(filePath, full_path)
+            #wget.download(filePath, full_path)
 
 
         except Exception as e:
             full_path = None
+            filePath = None
 
         tmp_info.update(
             {
-                'path_to_file':full_path,
-                'url_to_file':filePath
+                'path_to_file':full_path
             })
-
-        final_info.append(tmp_info.copy())
+        if(full_path != None):
+            final_info.append(tmp_info.copy())
         time.sleep(2)
 
 driver.quit()
